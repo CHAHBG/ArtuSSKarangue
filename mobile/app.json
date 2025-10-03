@@ -1,0 +1,61 @@
+{
+  "expo": {
+    "name": "ARTU SI SEN KARANGUE",
+    "slug": "artu-si-sen-karangue",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#DC2626"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.artussenkarangue.emergency",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "This app needs your location to report emergencies and find nearby help.",
+        "NSLocationAlwaysUsageDescription": "This app needs your location to send SOS alerts when you're in danger.",
+        "NSCameraUsageDescription": "This app needs camera access to capture emergency photos.",
+        "NSPhotoLibraryUsageDescription": "This app needs photo access to attach images to emergency reports."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#DC2626"
+      },
+      "edgeToEdgeEnabled": true,
+      "package": "com.artussenkarangue.emergency",
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Allow ARTU SI SEN KARANGUE to use your location to report emergencies and send SOS alerts."
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow ARTU SI SEN KARANGUE to access your camera to capture emergency photos."
+        }
+      ]
+    ]
+  }
+}
