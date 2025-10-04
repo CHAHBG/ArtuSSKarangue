@@ -1,57 +1,31 @@
--- ================================# Database Setup Script for ARTU SI SEN KARANGUE
+-- ARTU SI SEN KARANGUE - Database Schema COMPATIBLE avec l'API
+-- Version compatible avec backend Node.js
 
--- ARTU SI SEN KARANGUE - Database Schema COMPATIBLE avec l'API# Run this in PostgreSQL (psql or pgAdmin)
-
--- Tables pour l'application d'urgence
-
--- Version compatible avec backend Node.js# Step 1: Connect to PostgreSQL
-
--- ================================# psql -U postgres
-
-
-
--- Table Utilisateurs (compatible API)# Step 2: Create database
-
-CREATE TABLE IF NOT EXISTS utilisateurs (CREATE DATABASE "ArtuDB";
-
+-- Table Utilisateurs (compatible API)
+CREATE TABLE IF NOT EXISTS utilisateurs (
     id SERIAL PRIMARY KEY,
-
-    username VARCHAR(50) UNIQUE,# Step 3: Connect to the database
-
-    full_name VARCHAR(100),\c "ArtuDB"
-
+    username VARCHAR(50) UNIQUE,
+    full_name VARCHAR(100),
     nom VARCHAR(100),
-
-    prenom VARCHAR(100),# Step 4: Enable PostGIS extension
-
-    telephone VARCHAR(20),CREATE EXTENSION IF NOT EXISTS postgis;
-
+    prenom VARCHAR(100),
+    telephone VARCHAR(20),
     phone_number VARCHAR(20),
-
-    email VARCHAR(255) UNIQUE NOT NULL,# Step 5: Verify PostGIS installation
-
-    password_hash VARCHAR(255) NOT NULL,SELECT PostGIS_version();
-
+    email VARCHAR(255) UNIQUE NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,
     role VARCHAR(20) DEFAULT 'citizen' CHECK (role IN ('citizen', 'responder', 'admin')),
-
-    profile_picture VARCHAR(500),# You should see PostGIS version (e.g., "3.3 USE_GEOS=1 USE_PROJ=1...")
-
+    profile_picture VARCHAR(500),
     profile_image VARCHAR(500),
-
-    address TEXT,# Step 6: Exit psql
-
-    latitude DECIMAL(10, 8),\q
-
+    address TEXT,
+    latitude DECIMAL(10, 8),
     longitude DECIMAL(11, 8),
-
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,# Now you can run: npm run migrate
-
+    is_verified BOOLEAN DEFAULT false,
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    last_login TIMESTAMP,
-    is_active BOOLEAN DEFAULT true
+    last_login TIMESTAMP
 );
 
--- Table Urgences/Emergencies (compatible API)
+-- Table Emergencies
 CREATE TABLE IF NOT EXISTS emergencies (
     id SERIAL PRIMARY KEY,
     user_id INTEGER REFERENCES utilisateurs(id) ON DELETE CASCADE,
@@ -73,17 +47,12 @@ CREATE TABLE IF NOT EXISTS emergencies (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Alias: urgences pointe vers emergencies (compatibilite)
-CREATE OR REPLACE VIEW urgences AS SELECT * FROM emergencies;
-
--- Table Messages (Chat)
+-- Table Messages
 CREATE TABLE IF NOT EXISTS messages (
     id SERIAL PRIMARY KEY,
     emergency_id INTEGER REFERENCES emergencies(id) ON DELETE CASCADE,
-    urgence_id INTEGER REFERENCES emergencies(id) ON DELETE CASCADE,
     user_id INTEGER REFERENCES utilisateurs(id) ON DELETE CASCADE,
     content TEXT NOT NULL,
-    message TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     is_read BOOLEAN DEFAULT false
 );
@@ -93,17 +62,15 @@ CREATE TABLE IF NOT EXISTS notifications (
     id SERIAL PRIMARY KEY,
     user_id INTEGER REFERENCES utilisateurs(id) ON DELETE CASCADE,
     emergency_id INTEGER REFERENCES emergencies(id) ON DELETE CASCADE,
-    urgence_id INTEGER REFERENCES emergencies(id) ON DELETE CASCADE,
     type VARCHAR(50) NOT NULL,
     title VARCHAR(255) NOT NULL,
     message TEXT NOT NULL,
     is_read BOOLEAN DEFAULT false,
-    read BOOLEAN DEFAULT false,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     data JSONB
 );
 
--- Table Posts Communaute
+-- Table Posts
 CREATE TABLE IF NOT EXISTS posts (
     id SERIAL PRIMARY KEY,
     user_id INTEGER REFERENCES utilisateurs(id) ON DELETE CASCADE,
@@ -113,9 +80,7 @@ CREATE TABLE IF NOT EXISTS posts (
     latitude DECIMAL(10, 8),
     longitude DECIMAL(11, 8),
     address TEXT,
-    location JSONB,
     images JSONB DEFAULT '[]',
-    media_urls JSONB DEFAULT '[]',
     likes_count INTEGER DEFAULT 0,
     comments_count INTEGER DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -123,7 +88,7 @@ CREATE TABLE IF NOT EXISTS posts (
     is_active BOOLEAN DEFAULT true
 );
 
--- Table Commentaires
+-- Table Comments
 CREATE TABLE IF NOT EXISTS comments (
     id SERIAL PRIMARY KEY,
     post_id INTEGER REFERENCES posts(id) ON DELETE CASCADE,
@@ -142,21 +107,46 @@ CREATE TABLE IF NOT EXISTS likes (
     UNIQUE(post_id, user_id)
 );
 
--- Index pour ameliorer les performances
+-- Table Refresh Tokens (pour JWT)
+CREATE TABLE IF NOT EXISTS refresh_tokens (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES utilisateurs(id) ON DELETE CASCADE,
+    token VARCHAR(500) UNIQUE NOT NULL,
+    expires_at TIMESTAMP NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    revoked BOOLEAN DEFAULT false
+);
+
+-- Table Audit Logs (pour tracer les actions)
+CREATE TABLE IF NOT EXISTS audit_logs (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES utilisateurs(id) ON DELETE SET NULL,
+    action VARCHAR(100) NOT NULL,
+    entity_type VARCHAR(50),
+    entity_id INTEGER,
+    ip_address VARCHAR(45),
+    user_agent TEXT,
+    details JSONB,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Index
 CREATE INDEX IF NOT EXISTS idx_utilisateurs_email ON utilisateurs(email);
 CREATE INDEX IF NOT EXISTS idx_utilisateurs_username ON utilisateurs(username);
-CREATE INDEX IF NOT EXISTS idx_utilisateurs_phone ON utilisateurs(phone_number);
 CREATE INDEX IF NOT EXISTS idx_emergencies_user_id ON emergencies(user_id);
 CREATE INDEX IF NOT EXISTS idx_emergencies_status ON emergencies(status);
-CREATE INDEX IF NOT EXISTS idx_emergencies_created_at ON emergencies(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_messages_emergency_id ON messages(emergency_id);
 CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON notifications(user_id);
 CREATE INDEX IF NOT EXISTS idx_posts_user_id ON posts(user_id);
-CREATE INDEX IF NOT EXISTS idx_posts_created_at ON posts(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_comments_post_id ON comments(post_id);
 CREATE INDEX IF NOT EXISTS idx_likes_post_user ON likes(post_id, user_id);
+CREATE INDEX IF NOT EXISTS idx_refresh_tokens_user_id ON refresh_tokens(user_id);
+CREATE INDEX IF NOT EXISTS idx_refresh_tokens_token ON refresh_tokens(token);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_user_id ON audit_logs(user_id);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_action ON audit_logs(action);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_created_at ON audit_logs(created_at DESC);
 
--- Fonction pour mettre a jour updated_at automatiquement
+-- Fonction updated_at
 CREATE OR REPLACE FUNCTION update_updated_at_column()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -165,7 +155,7 @@ BEGIN
 END;
 $$ language 'plpgsql';
 
--- Triggers pour updated_at
+-- Triggers
 DROP TRIGGER IF EXISTS update_utilisateurs_updated_at ON utilisateurs;
 CREATE TRIGGER update_utilisateurs_updated_at BEFORE UPDATE ON utilisateurs
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
@@ -178,16 +168,5 @@ DROP TRIGGER IF EXISTS update_posts_updated_at ON posts;
 CREATE TRIGGER update_posts_updated_at BEFORE UPDATE ON posts
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
-DROP TRIGGER IF EXISTS update_comments_updated_at ON comments;
-CREATE TRIGGER update_comments_updated_at BEFORE UPDATE ON comments
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
--- Extension PostGIS pour les donnees geographiques (optionnel)
-CREATE EXTENSION IF NOT EXISTS postgis;
-
--- Message de confirmation
-DO $$
-BEGIN
-    RAISE NOTICE 'Tables creees avec succes pour ARTU SI SEN KARANGUE !';
-    RAISE NOTICE 'Compatible avec API Node.js backend';
-END $$;
+-- Vue pour compatibilite: users pointe vers utilisateurs
+CREATE OR REPLACE VIEW users AS SELECT * FROM utilisateurs;

@@ -1,6 +1,6 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import api from '../config/api';
+import { supabase, supabaseAuth } from '../config/supabase';
 import { initializeSocket, disconnectSocket } from '../config/socket';
 import Toast from 'react-native-toast-message';
 
@@ -14,19 +14,33 @@ export const AuthProvider = ({ children }) => {
   // Load user from storage on mount
   useEffect(() => {
     loadUser();
+    
+    // Écouter les changements d'authentification Supabase
+    const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_IN' && session) {
+        const profile = await supabaseAuth.getUserProfile(session.user.id);
+        setUser(profile);
+        setIsAuthenticated(true);
+      } else if (event === 'SIGNED_OUT') {
+        setUser(null);
+        setIsAuthenticated(false);
+      }
+    });
+
+    return () => {
+      authListener?.subscription?.unsubscribe();
+    };
   }, []);
 
   const loadUser = async () => {
     try {
-      const [storedUser, token] = await AsyncStorage.multiGet([
-        'user',
-        'accessToken',
-      ]);
-
-      if (storedUser[1] && token[1]) {
-        setUser(JSON.parse(storedUser[1]));
+      const session = await supabaseAuth.getSession();
+      
+      if (session?.user) {
+        const profile = await supabaseAuth.getUserProfile(session.user.id);
+        setUser(profile);
         setIsAuthenticated(true);
-        initializeSocket(token[1]);
+        initializeSocket(session.access_token);
       }
     } catch (error) {
       console.error('Error loading user:', error);
@@ -37,18 +51,28 @@ export const AuthProvider = ({ children }) => {
 
   const register = async (userData) => {
     try {
-      const response = await api.post('/auth/register', userData);
-      const { user: newUser, accessToken, refreshToken } = response.data.data;
+      const data = await supabaseAuth.signUp(
+        userData.email,
+        userData.password,
+        {
+          nom: userData.nom,
+          prenom: userData.prenom,
+          telephone: userData.telephone,
+          role: userData.role || 'citizen',
+          username: userData.username || `${userData.nom}${userData.prenom}`.toLowerCase(),
+          full_name: `${userData.nom} ${userData.prenom}`,
+        }
+      );
 
-      await AsyncStorage.multiSet([
-        ['user', JSON.stringify(newUser)],
-        ['accessToken', accessToken],
-        ['refreshToken', refreshToken],
-      ]);
-
-      setUser(newUser);
+      // Récupérer le profil complet
+      const profile = await supabaseAuth.getUserProfile(data.user.id);
+      
+      setUser(profile);
       setIsAuthenticated(true);
-      initializeSocket(accessToken);
+      
+      if (data.session?.access_token) {
+        initializeSocket(data.session.access_token);
+      }
 
       Toast.show({
         type: 'success',
@@ -56,9 +80,9 @@ export const AuthProvider = ({ children }) => {
         text2: 'Compte créé avec succès',
       });
 
-      return { success: true, user: newUser };
+      return { success: true, user: profile };
     } catch (error) {
-      const message = error.response?.data?.message || 'Erreur lors de l\'inscription';
+      const message = error.message || 'Erreur lors de l\'inscription';
       Toast.show({
         type: 'error',
         text1: 'Erreur',
@@ -70,28 +94,27 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (email, password) => {
     try {
-      const response = await api.post('/auth/login', { email, password });
-      const { user: loggedUser, accessToken, refreshToken } = response.data.data;
+      const data = await supabaseAuth.signIn(email, password);
+      
+      // Récupérer le profil complet
+      const profile = await supabaseAuth.getUserProfile(data.user.id);
 
-      await AsyncStorage.multiSet([
-        ['user', JSON.stringify(loggedUser)],
-        ['accessToken', accessToken],
-        ['refreshToken', refreshToken],
-      ]);
-
-      setUser(loggedUser);
+      setUser(profile);
       setIsAuthenticated(true);
-      initializeSocket(accessToken);
+      
+      if (data.session?.access_token) {
+        initializeSocket(data.session.access_token);
+      }
 
       Toast.show({
         type: 'success',
         text1: 'Bienvenue!',
-        text2: `Content de vous revoir ${loggedUser.full_name}`,
+        text2: `Content de vous revoir ${profile.full_name || profile.nom}`,
       });
 
-      return { success: true, user: loggedUser };
+      return { success: true, user: profile };
     } catch (error) {
-      const message = error.response?.data?.message || 'Email ou mot de passe incorrect';
+      const message = error.message || 'Email ou mot de passe incorrect';
       Toast.show({
         type: 'error',
         text1: 'Erreur',
@@ -103,11 +126,10 @@ export const AuthProvider = ({ children }) => {
 
   const logout = async () => {
     try {
-      await api.post('/auth/logout');
+      await supabaseAuth.signOut();
     } catch (error) {
       console.error('Logout error:', error);
     } finally {
-      await AsyncStorage.multiRemove(['user', 'accessToken', 'refreshToken']);
       setUser(null);
       setIsAuthenticated(false);
       disconnectSocket();
@@ -122,10 +144,8 @@ export const AuthProvider = ({ children }) => {
 
   const updateProfile = async (updates) => {
     try {
-      const response = await api.patch('/auth/update-profile', updates);
-      const updatedUser = response.data.data.user;
+      const updatedUser = await supabaseAuth.updateProfile(user.id, updates);
 
-      await AsyncStorage.setItem('user', JSON.stringify(updatedUser));
       setUser(updatedUser);
 
       Toast.show({
@@ -136,7 +156,7 @@ export const AuthProvider = ({ children }) => {
 
       return { success: true, user: updatedUser };
     } catch (error) {
-      const message = error.response?.data?.message || 'Erreur lors de la mise à jour';
+      const message = error.message || 'Erreur lors de la mise à jour';
       Toast.show({
         type: 'error',
         text1: 'Erreur',
@@ -148,7 +168,7 @@ export const AuthProvider = ({ children }) => {
 
   const updateLocation = async (latitude, longitude) => {
     try {
-      await api.patch('/auth/update-location', { latitude, longitude });
+      await supabaseAuth.updateLocation(user.id, latitude, longitude);
       return { success: true };
     } catch (error) {
       console.error('Error updating location:', error);

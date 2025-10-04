@@ -249,8 +249,7 @@ exports.getMe = catchAsync(async (req, res, next) => {
   const result = await query(
     `SELECT id, username, email, phone_number, role, profile_picture, 
             is_verified, is_active, created_at, updated_at,
-            ST_Y(location::geometry) as latitude,
-            ST_X(location::geometry) as longitude
+            latitude, longitude
      FROM users WHERE id = $1`,
     [req.user.id]
   );

@@ -164,7 +164,7 @@ Invoke-Expression $easCommand
 if ($LASTEXITCODE -eq 0) {
     Write-Host ""
     Write-Host "========================================" -ForegroundColor Green
-    Write-Success "Build terminé avec succès !"
+    Write-Success "Build termine avec succes !"
     Write-Host "========================================" -ForegroundColor Green
     Write-Host ""
     
@@ -172,35 +172,36 @@ if ($LASTEXITCODE -eq 0) {
         Write-Info "Votre build est disponible sur :"
         Write-Host "   https://expo.dev/accounts/[votre-username]/projects/artu-si-sen-karangue/builds" -ForegroundColor Cyan
         Write-Host ""
-        Write-Info "Scannez le QR code ou téléchargez l'APK depuis le lien fourni ci-dessus"
+        Write-Info "Scannez le QR code ou telechargez l'APK depuis le lien fourni ci-dessus"
     } else {
         Write-Info "Le fichier APK/IPA est disponible localement"
     }
     
     Write-Host ""
-    Write-Host "📱 Installation sur Android:" -ForegroundColor Yellow
-    Write-Host "   1. Téléchargez l'APK" -ForegroundColor White
-    Write-Host "   2. Transférez-le sur votre téléphone" -ForegroundColor White
-    Write-Host "   3. Activez 'Sources inconnues' dans les paramètres" -ForegroundColor White
+    Write-Host "Installation sur Android:" -ForegroundColor Yellow
+    Write-Host "   1. Telechargez l'APK" -ForegroundColor White
+    Write-Host "   2. Transferez-le sur votre telephone" -ForegroundColor White
+    Write-Host "   3. Activez 'Sources inconnues' dans les parametres" -ForegroundColor White
     Write-Host "   4. Installez l'APK" -ForegroundColor White
     Write-Host ""
-} else {
+}
+else {
     Write-Host ""
     Write-Host "========================================" -ForegroundColor Red
-    Write-Error "Le build a échoué"
+    Write-Error "Le build a echoue"
     Write-Host "========================================" -ForegroundColor Red
     Write-Host ""
-    Write-Info "Consultez les logs ci-dessus pour plus de détails"
+    Write-Info "Consultez les logs ci-dessus pour plus de details"
     Write-Host ""
     Write-Host "Solutions communes:" -ForegroundColor Yellow
     Write-Host "   1. Nettoyer le cache: npm cache clean --force" -ForegroundColor White
-    Write-Host "   2. Réinstaller: rm -rf node_modules; npm install" -ForegroundColor White
-    Write-Host "   3. Vérifier la connexion EAS: eas login" -ForegroundColor White
+    Write-Host "   2. Reinstaller: rm -rf node_modules; npm install" -ForegroundColor White
+    Write-Host "   3. Verifier la connexion EAS: eas login" -ForegroundColor White
     Write-Host "   4. Consulter BUILD_GUIDE.md pour plus d'aide" -ForegroundColor White
     Write-Host ""
     exit 1
 }
 
 Write-Host ""
-Write-Host "Merci d'utiliser ARTU SI SEN KARANGUE ! 🇸🇳" -ForegroundColor Cyan
+Write-Host "Merci d'utiliser ARTU SI SEN KARANGUE !" -ForegroundColor Cyan
 Write-Host ""

@@ -6,25 +6,42 @@
 const { Pool } = require('pg');
 const logger = require('../utils/logger');
 
-const pool = new Pool({
-  host: process.env.DB_HOST || 'localhost',
-  port: process.env.DB_PORT || 5432,
-  database: process.env.DB_NAME || 'artu_emergency_db',
-  user: process.env.DB_USER || 'postgres',
-  password: process.env.DB_PASSWORD,
-  min: parseInt(process.env.DB_POOL_MIN) || 2,
-  max: parseInt(process.env.DB_POOL_MAX) || 10,
-  idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 2000,
-});
+// Configuration pour Supabase ou PostgreSQL local
+const poolConfig = process.env.DATABASE_URL 
+  ? {
+      // Configuration avec DATABASE_URL (Supabase)
+      connectionString: process.env.DATABASE_URL,
+      ssl: {
+        rejectUnauthorized: false // Important pour Supabase
+      },
+      min: parseInt(process.env.DB_POOL_MIN) || 2,
+      max: parseInt(process.env.DB_POOL_MAX) || 10,
+      idleTimeoutMillis: 30000,
+      connectionTimeoutMillis: 10000, // Plus long pour les connexions cloud
+    }
+  : {
+      // Configuration avec variables séparées (PostgreSQL local)
+      host: process.env.DB_HOST || 'localhost',
+      port: process.env.DB_PORT || 5432,
+      database: process.env.DB_NAME || 'artu_emergency_db',
+      user: process.env.DB_USER || 'postgres',
+      password: process.env.DB_PASSWORD,
+      min: parseInt(process.env.DB_POOL_MIN) || 2,
+      max: parseInt(process.env.DB_POOL_MAX) || 10,
+      idleTimeoutMillis: 30000,
+      connectionTimeoutMillis: 2000,
+    };
+
+const pool = new Pool(poolConfig);
 
 // Test database connection
 pool.on('connect', () => {
-  logger.info('Database connected successfully');
+  const dbType = process.env.DATABASE_URL ? 'Supabase PostgreSQL' : 'Local PostgreSQL';
+  logger.info(`✅ Connected to ${dbType}`);
 });
 
 pool.on('error', (err) => {
-  logger.error('Unexpected database error:', err);
+  logger.error('❌ Unexpected database error:', err);
   process.exit(-1);
 });
 
