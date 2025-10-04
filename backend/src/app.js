@@ -104,20 +104,48 @@ app.get('/health', (req, res) => {
 app.get('/health/db', async (req, res) => {
   try {
     const { query } = require('./config/database');
+    
+    // Test 1: Connexion basique
+    const timeStart = Date.now();
     const result = await query('SELECT NOW() as time, version() as version');
+    const queryDuration = Date.now() - timeStart;
+    
+    // Test 2: Vérifier tables
+    const tablesResult = await query(`
+      SELECT COUNT(*) as count 
+      FROM information_schema.tables 
+      WHERE table_schema = 'public'
+    `);
+    
     res.status(200).json({
       status: 'success',
       message: 'Database connected',
+      environment: {
+        node_env: process.env.NODE_ENV,
+        has_database_url: !!process.env.DATABASE_URL,
+        database_url_prefix: process.env.DATABASE_URL ? process.env.DATABASE_URL.substring(0, 20) + '...' : 'not set'
+      },
       database: {
         time: result.rows[0].time,
         version: result.rows[0].version,
-      },
+        query_duration_ms: queryDuration,
+        tables_count: parseInt(tablesResult.rows[0].count)
+      }
     });
   } catch (error) {
     res.status(500).json({
       status: 'error',
       message: 'Database connection failed',
-      error: error.message,
+      environment: {
+        node_env: process.env.NODE_ENV,
+        has_database_url: !!process.env.DATABASE_URL,
+        database_url_prefix: process.env.DATABASE_URL ? process.env.DATABASE_URL.substring(0, 20) + '...' : 'not set'
+      },
+      error: {
+        message: error.message,
+        code: error.code,
+        name: error.name
+      }
     });
   }
 });
