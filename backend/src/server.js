@@ -99,7 +99,7 @@ const startServer = async () => {
     }
 
     // Start HTTP server
-    server.listen(PORT, () => {
+    server.listen(PORT, '0.0.0.0', () => {
       logger.info(`🚀 Server running on port ${PORT} in ${process.env.NODE_ENV} mode`);
       logger.info(`📍 Health check: http://localhost:${PORT}/health`);
       logger.info(`📡 API: http://localhost:${PORT}/api/${process.env.API_VERSION || 'v1'}`);
