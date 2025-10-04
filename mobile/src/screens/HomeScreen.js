@@ -115,7 +115,10 @@ export default function HomeScreen({ navigation }) {
         </View>
         
         {/* Notification Bell */}
-        <TouchableOpacity style={styles.notificationButton}>
+        <TouchableOpacity 
+          style={styles.notificationButton}
+          onPress={() => navigation.navigate('Notifications')}
+        >
           <Ionicons name="notifications-outline" size={28} color={colors.text.primary} />
           <View style={styles.notificationBadge}>
             <Text style={styles.notificationBadgeText}>3</Text>

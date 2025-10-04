@@ -1,0 +1,60 @@
+{
+  "name": "artu-si-sen-karangue-backend",
+  "version": "1.0.0",
+  "description": "Backend API for ARTU SI SEN KARANGUE emergency response system",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js",
+    "test": "jest --coverage",
+    "lint": "eslint src/**/*.js",
+    "lint:fix": "eslint src/**/*.js --fix",
+    "format": "prettier --write \"src/**/*.js\"",
+    "migrate": "node src/config/migrate.js"
+  },
+  "keywords": [
+    "emergency",
+    "response",
+    "community",
+    "alert",
+    "geospatial"
+  ],
+  "author": "ARTU SI SEN KARANGUE Team",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.2",
+    "socket.io": "^4.7.2",
+    "pg": "^8.11.3",
+    "redis": "^4.6.10",
+    "bcrypt": "^5.1.1",
+    "jsonwebtoken": "^9.0.2",
+    "joi": "^17.11.0",
+    "express-validator": "^7.0.1",
+    "express-rate-limit": "^7.1.5",
+    "multer": "^1.4.5-lts.1",
+    "cloudinary": "^1.41.0",
+    "node-cron": "^3.0.3",
+    "dotenv": "^16.3.1",
+    "cors": "^2.8.5",
+    "helmet": "^7.1.0",
+    "morgan": "^1.10.0",
+    "winston": "^3.11.0",
+    "compression": "^1.7.4",
+    "cookie-parser": "^1.4.6",
+    "express-mongo-sanitize": "^2.2.0",
+    "hpp": "^0.2.3"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2",
+    "jest": "^29.7.0",
+    "supertest": "^6.3.3",
+    "eslint": "^8.55.0",
+    "eslint-config-airbnb-base": "^15.0.0",
+    "eslint-plugin-import": "^2.29.0",
+    "prettier": "^3.1.1",
+    "husky": "^8.0.3"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

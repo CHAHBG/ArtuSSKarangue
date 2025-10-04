@@ -17,10 +17,15 @@ import RegisterScreen from './src/screens/RegisterScreen';
 
 // Main Screens
 import HomeScreen from './src/screens/HomeScreen';
-import MapScreen from './src/screens/MapScreen';
+import MapScreen from './src/screens/MapScreenWrapper';
 import ReportScreen from './src/screens/ReportScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
 import CommunityScreen from './src/screens/CommunityScreen';
+
+// New Advanced Screens
+import NotificationsScreen from './src/screens/NotificationsScreen';
+import SOSSettingsScreen from './src/screens/SOSSettingsScreen';
+import CreatePostScreen from './src/screens/CreatePostScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -90,15 +95,6 @@ function MainTabs() {
   );
 }
 
-function AuthStack() {
-  return (
-    <Stack.Navigator screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="Login" component={LoginScreen} />
-      <Stack.Screen name="Register" component={RegisterScreen} />
-    </Stack.Navigator>
-  );
-}
-
 function AppNavigator() {
   const { isAuthenticated, loading } = useAuth();
   const [showSplash, setShowSplash] = useState(true);
@@ -113,7 +109,21 @@ function AppNavigator() {
 
   return (
     <NavigationContainer>
-      {isAuthenticated ? <MainTabs /> : <AuthStack />}
+      <Stack.Navigator screenOptions={{ headerShown: false }}>
+        {isAuthenticated ? (
+          <>
+            <Stack.Screen name="MainTabs" component={MainTabs} />
+            <Stack.Screen name="Notifications" component={NotificationsScreen} />
+            <Stack.Screen name="SOSSettings" component={SOSSettingsScreen} />
+            <Stack.Screen name="CreatePost" component={CreatePostScreen} />
+          </>
+        ) : (
+          <>
+            <Stack.Screen name="Login" component={LoginScreen} />
+            <Stack.Screen name="Register" component={RegisterScreen} />
+          </>
+        )}
+      </Stack.Navigator>
     </NavigationContainer>
   );
 }

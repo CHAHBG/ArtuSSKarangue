@@ -1,11 +1,20 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, StyleSheet, Text, TouchableOpacity, ActivityIndicator } from 'react-native';
-import MapView, { Marker, Circle, PROVIDER_GOOGLE } from 'react-native-maps';
+import { View, StyleSheet, Text, TouchableOpacity, ActivityIndicator, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocation } from '../context/LocationContext';
 import api from '../config/api';
 import { colors, typography, spacing, borderRadius, shadows, getEmergencyColor, emergencyLabels } from '../theme';
+
+// Conditional import for react-native-maps (not available on web)
+let MapView, Marker, Circle, PROVIDER_GOOGLE;
+if (Platform.OS !== 'web') {
+  const Maps = require('react-native-maps');
+  MapView = Maps.default;
+  Marker = Maps.Marker;
+  Circle = Maps.Circle;
+  PROVIDER_GOOGLE = Maps.PROVIDER_GOOGLE;
+}
 
 export default function MapScreen({ route }) {
   const { location, getCurrentLocation } = useLocation();
@@ -63,6 +72,35 @@ export default function MapScreen({ route }) {
         <ActivityIndicator size="large" color={colors.primary} />
         <Text style={styles.loadingText}>Chargement de la carte...</Text>
       </View>
+    );
+  }
+
+  // Web fallback - maps not available on web
+  if (Platform.OS === 'web') {
+    return (
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <View style={styles.webFallback}>
+          <Ionicons name="map" size={80} color={colors.primary} />
+          <Text style={styles.webFallbackTitle}>Carte interactive</Text>
+          <Text style={styles.webFallbackText}>
+            La carte interactive nécessite l'application mobile.
+          </Text>
+          <Text style={styles.webFallbackSubtext}>
+            Scannez le QR code avec Expo Go pour accéder à toutes les fonctionnalités.
+          </Text>
+          <View style={styles.emergencyList}>
+            <Text style={styles.emergencyListTitle}>Urgences à proximité :</Text>
+            {emergencies.map((emergency) => (
+              <View key={emergency.id} style={styles.emergencyItem}>
+                <View style={[styles.emergencyDot, { backgroundColor: getEmergencyColor(emergency.type) }]} />
+                <Text style={styles.emergencyItemText}>
+                  {emergencyLabels[emergency.type]} - {emergency.description.substring(0, 50)}...
+                </Text>
+              </View>
+            ))}
+          </View>
+        </View>
+      </SafeAreaView>
     );
   }
 
@@ -233,5 +271,61 @@ const styles = StyleSheet.create({
     ...typography.bodySmall,
     color: colors.text.secondary,
     marginLeft: spacing.xs,
+  },
+  webFallback: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: spacing.xl,
+    backgroundColor: colors.background,
+  },
+  webFallbackTitle: {
+    ...typography.h2,
+    color: colors.text.primary,
+    marginTop: spacing.lg,
+    marginBottom: spacing.md,
+  },
+  webFallbackText: {
+    ...typography.body,
+    color: colors.text.primary,
+    textAlign: 'center',
+    marginBottom: spacing.sm,
+  },
+  webFallbackSubtext: {
+    ...typography.bodySmall,
+    color: colors.text.secondary,
+    textAlign: 'center',
+    marginBottom: spacing.xl,
+  },
+  emergencyList: {
+    width: '100%',
+    maxWidth: 500,
+    backgroundColor: colors.surface,
+    borderRadius: borderRadius.lg,
+    padding: spacing.lg,
+    ...shadows.md,
+  },
+  emergencyListTitle: {
+    ...typography.h4,
+    color: colors.text.primary,
+    marginBottom: spacing.md,
+  },
+  emergencyItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  emergencyDot: {
+    width: 12,
+    height: 12,
+    borderRadius: borderRadius.full,
+    marginRight: spacing.md,
+  },
+  emergencyItemText: {
+    ...typography.bodySmall,
+    color: colors.text.primary,
+    flex: 1,
   },
 });

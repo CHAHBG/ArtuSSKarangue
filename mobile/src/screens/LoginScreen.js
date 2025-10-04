@@ -13,7 +13,7 @@ import * as Yup from 'yup';
 import { useAuth } from '../context/AuthContext';
 import { Button } from '../components/Button';
 import { Input } from '../components/Input';
-import { colors, typography, spacing, borderRadius } from '../theme';
+import { colors, typography, spacing, borderRadius, shadows } from '../theme';
 import { Ionicons } from '@expo/vector-icons';
 
 const loginSchema = Yup.object().shape({

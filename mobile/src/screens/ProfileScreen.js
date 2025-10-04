@@ -101,12 +101,31 @@ export default function ProfileScreen({ navigation }) {
 
           <View style={styles.divider} />
 
-          <TouchableOpacity style={styles.settingItem}>
+          <TouchableOpacity 
+            style={styles.settingItem}
+            onPress={() => navigation.navigate('Notifications')}
+          >
             <View style={styles.settingLeft}>
               <Ionicons name="notifications-outline" size={24} color={colors.text.secondary} />
               <View style={styles.settingText}>
                 <Text style={styles.settingTitle}>Notifications</Text>
                 <Text style={styles.settingDescription}>Gérer les alertes</Text>
+              </View>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={colors.text.secondary} />
+          </TouchableOpacity>
+
+          <View style={styles.divider} />
+
+          <TouchableOpacity 
+            style={styles.settingItem}
+            onPress={() => navigation.navigate('SOSSettings')}
+          >
+            <View style={styles.settingLeft}>
+              <Ionicons name="shield-checkmark-outline" size={24} color={colors.text.secondary} />
+              <View style={styles.settingText}>
+                <Text style={styles.settingTitle}>Paramètres SOS</Text>
+                <Text style={styles.settingDescription}>Rayon d'alerte, contact d'urgence</Text>
               </View>
             </View>
             <Ionicons name="chevron-forward" size={20} color={colors.text.secondary} />
