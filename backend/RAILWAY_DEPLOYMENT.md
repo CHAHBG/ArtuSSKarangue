@@ -85,9 +85,9 @@ SUPABASE_URL=https://xsnrzyzgphmjivdqpgst.supabase.co
 SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhzbnl6eXpncGhtaml2ZHFwZ3N0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MjgwNTU5OTksImV4cCI6MjA0MzYzMTk5OX0.f-8b7bWnDHxGxSYV6YBqf8UrJQRCdMxQ4h1pSGGRjRc
 
 # JWT Configuration
-JWT_SECRET=your-super-secret-jwt-key-change-this-in-production-2024
+JWT_SECRET=JXUdhlHWoqTRbCF3ukDVeiIAyfYNS1LKajO2mn56s70v8trwpEMQz4GBPZgxc9
 JWT_EXPIRES_IN=1h
-JWT_REFRESH_SECRET=your-super-secret-refresh-key-change-this-too-2024
+JWT_REFRESH_SECRET=cBPkvG0wqbpsaxrD9h3YIRL54tUQOSNjgVF2TzC6Wo8uXAiHfE7ZneKlMdJm1y
 JWT_REFRESH_EXPIRES_IN=7d
 
 # Server Configuration
