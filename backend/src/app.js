@@ -100,6 +100,28 @@ app.get('/health', (req, res) => {
   });
 });
 
+// Database connection test endpoint
+app.get('/health/db', async (req, res) => {
+  try {
+    const { query } = require('./config/database');
+    const result = await query('SELECT NOW() as time, version() as version');
+    res.status(200).json({
+      status: 'success',
+      message: 'Database connected',
+      database: {
+        time: result.rows[0].time,
+        version: result.rows[0].version,
+      },
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: 'error',
+      message: 'Database connection failed',
+      error: error.message,
+    });
+  }
+});
+
 // API version info
 app.get('/api', (req, res) => {
   res.status(200).json({
