@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, StyleSheet, Text, TouchableOpacity, ActivityIndicator, Platform } from 'react-native';
+import { View, StyleSheet, Text, TouchableOpacity, ActivityIndicator, Platform, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocation } from '../context/LocationContext';
@@ -8,15 +8,23 @@ import { colors, typography, spacing, borderRadius, shadows, getEmergencyColor, 
 
 // Conditional import for react-native-maps (not available on web)
 let MapView, Marker, Circle, PROVIDER_GOOGLE;
-if (Platform.OS !== 'web') {
-  const Maps = require('react-native-maps');
-  MapView = Maps.default;
-  Marker = Maps.Marker;
-  Circle = Maps.Circle;
-  PROVIDER_GOOGLE = Maps.PROVIDER_GOOGLE;
+let mapsAvailable = false;
+
+try {
+  if (Platform.OS !== 'web') {
+    const Maps = require('react-native-maps');
+    MapView = Maps.default;
+    Marker = Maps.Marker;
+    Circle = Maps.Circle;
+    PROVIDER_GOOGLE = Maps.PROVIDER_GOOGLE;
+    mapsAvailable = true;
+  }
+} catch (error) {
+  console.error('Error loading react-native-maps:', error);
+  mapsAvailable = false;
 }
 
-export default function MapScreen({ route }) {
+export default function MapScreen({ route, navigation }) {
   const { location, getCurrentLocation } = useLocation();
   const [emergencies, setEmergencies] = useState([]);
   const [selectedEmergency, setSelectedEmergency] = useState(null);
@@ -76,27 +84,32 @@ export default function MapScreen({ route }) {
   }
 
   // Web fallback - maps not available on web
-  if (Platform.OS === 'web') {
+  if (Platform.OS === 'web' || !mapsAvailable) {
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
         <View style={styles.webFallback}>
-          <Ionicons name="map" size={80} color={colors.primary} />
+          <Ionicons name="map" size={80} color={colors.primary.main} />
           <Text style={styles.webFallbackTitle}>Carte interactive</Text>
           <Text style={styles.webFallbackText}>
-            La carte interactive nécessite l'application mobile.
+            {Platform.OS === 'web' 
+              ? 'La carte interactive nécessite l\'application mobile.' 
+              : 'La bibliothèque de cartes n\'est pas disponible.'}
           </Text>
           <Text style={styles.webFallbackSubtext}>
-            Scannez le QR code avec Expo Go pour accéder à toutes les fonctionnalités.
+            {emergencies.length} urgence(s) à proximité
           </Text>
           <View style={styles.emergencyList}>
-            <Text style={styles.emergencyListTitle}>Urgences à proximité :</Text>
-            {emergencies.map((emergency) => (
-              <View key={emergency.id} style={styles.emergencyItem}>
-                <View style={[styles.emergencyDot, { backgroundColor: getEmergencyColor(emergency.type) }]} />
+            {emergencies.slice(0, 5).map((emergency) => (
+              <TouchableOpacity 
+                key={emergency.id} 
+                style={styles.emergencyItem}
+                onPress={() => navigation?.navigate('EmergencyDetails', { emergencyId: emergency.id })}
+              >
+                <View style={[styles.emergencyDot, { backgroundColor: getEmergencyColor(emergency.emergency_type) }]} />
                 <Text style={styles.emergencyItemText}>
-                  {emergencyLabels[emergency.type]} - {emergency.description.substring(0, 50)}...
+                  {emergencyLabels[emergency.emergency_type]} - {emergency.description.substring(0, 40)}...
                 </Text>
-              </View>
+              </TouchableOpacity>
             ))}
           </View>
         </View>

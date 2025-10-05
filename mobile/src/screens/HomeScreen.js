@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -7,6 +7,7 @@ import {
   RefreshControl,
   TouchableOpacity,
   ActivityIndicator,
+  Animated,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -23,11 +24,32 @@ export default function HomeScreen({ navigation }) {
   const [emergencies, setEmergencies] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  
+  // Animation for SOS button pulsating effect
+  const pulseAnim = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
     loadEmergencies();
     setupSocketListeners();
+    startPulseAnimation();
   }, [location]);
+
+  const startPulseAnimation = () => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, {
+          toValue: 1.1,
+          duration: 1000,
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulseAnim, {
+          toValue: 1,
+          duration: 1000,
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+  };
 
   const setupSocketListeners = () => {
     listenToEmergencies((emergency) => {
@@ -144,12 +166,12 @@ export default function HomeScreen({ navigation }) {
             onPress={() => navigation.navigate('Report', { sos: true })}
             activeOpacity={0.8}
           >
-            <View style={styles.sosRipple1} />
-            <View style={styles.sosRipple2} />
-            <View style={styles.sosButton}>
+            <Animated.View style={[styles.sosRipple1, { transform: [{ scale: pulseAnim }] }]} />
+            <Animated.View style={[styles.sosRipple2, { transform: [{ scale: pulseAnim }] }]} />
+            <Animated.View style={[styles.sosButton, { transform: [{ scale: pulseAnim }] }]}>
               <Ionicons name="warning" size={48} color={colors.text.inverse} />
               <Text style={styles.sosButtonText}>SOS</Text>
-            </View>
+            </Animated.View>
           </TouchableOpacity>
 
           {/* Toggle volontariat */}
@@ -179,7 +201,12 @@ export default function HomeScreen({ navigation }) {
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Urgences à proximité</Text>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Urgences à proximité</Text>
+            <TouchableOpacity onPress={() => navigation.navigate('ViewEmergencies')}>
+              <Text style={styles.viewAllText}>Voir tout</Text>
+            </TouchableOpacity>
+          </View>
 
           {emergencies.length === 0 ? (
             <View style={styles.emptyState}>
@@ -190,12 +217,12 @@ export default function HomeScreen({ navigation }) {
               </Text>
             </View>
           ) : (
-            emergencies.map((emergency) => (
+            emergencies.slice(0, 5).map((emergency) => (
               <EmergencyCard
                 key={emergency.id}
                 emergency={emergency}
                 onVote={handleVote}
-                onPress={() => navigation.navigate('Map', { emergencyId: emergency.id })}
+                onPress={() => navigation.navigate('EmergencyDetails', { emergencyId: emergency.id })}
               />
             ))
           )}
@@ -206,12 +233,12 @@ export default function HomeScreen({ navigation }) {
 }
 
 function EmergencyCard({ emergency, onVote, onPress }) {
-  const typeColor = getEmergencyColor(emergency.type);
+  const typeColor = getEmergencyColor(emergency.emergency_type);
 
   return (
     <TouchableOpacity style={styles.card} onPress={onPress}>
       <View style={[styles.cardBadge, { backgroundColor: typeColor }]}>
-        <Text style={styles.cardBadgeText}>{emergencyLabels[emergency.type]}</Text>
+        <Text style={styles.cardBadgeText}>{emergencyLabels[emergency.emergency_type]}</Text>
       </View>
 
       <View style={styles.cardHeader}>
@@ -228,7 +255,7 @@ function EmergencyCard({ emergency, onVote, onPress }) {
         <View style={styles.cardLocation}>
           <Ionicons name="location-outline" size={16} color={colors.text.secondary} />
           <Text style={styles.cardLocationText}>
-            {Math.round(emergency.distance)}m de vous
+            {emergency.distance ? `${Math.round(emergency.distance)}m de vous` : 'À proximité'}
           </Text>
         </View>
 
@@ -236,11 +263,11 @@ function EmergencyCard({ emergency, onVote, onPress }) {
           style={styles.voteButton}
           onPress={(e) => {
             e.stopPropagation();
-            onVote(emergency.id, emergency.votes);
+            onVote(emergency.id, emergency.votes || 0);
           }}
         >
-          <Ionicons name="arrow-up-circle-outline" size={20} color={colors.primary} />
-          <Text style={styles.voteText}>{emergency.votes}</Text>
+          <Ionicons name="arrow-up-circle-outline" size={20} color={colors.primary.main} />
+          <Text style={styles.voteText}>{emergency.votes || 0}</Text>
         </TouchableOpacity>
       </View>
     </TouchableOpacity>
@@ -438,10 +465,20 @@ const styles = StyleSheet.create({
   section: {
     marginBottom: spacing.lg,
   },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.md,
+  },
   sectionTitle: {
     ...typography.h4,
     color: colors.text.primary,
-    marginBottom: spacing.md,
+  },
+  viewAllText: {
+    ...typography.button,
+    color: colors.primary.main,
+    fontSize: 14,
   },
   emptyState: {
     alignItems: 'center',

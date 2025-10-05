@@ -176,26 +176,29 @@ export default function CreatePostScreen({ navigation }) {
 
     try {
       setLoading(true);
+      console.log('📤 Publishing post...');
 
-      // TODO: Upload des images vers le serveur
-      // const imageUrls = await uploadImages(post.images);
-
+      // Prepare post data
       const postData = {
         title: post.title.trim(),
         description: post.description.trim(),
         category: post.category,
-        location: post.location,
-        locationName: post.locationName,
-        contactPhone: post.contactPhone.trim(),
-        contactName: post.contactName.trim(),
-        // images: imageUrls,
-        images: post.images.map(img => img.uri), // Pour le moment, on garde les URIs locales
-        userId: user.id,
-        author: user.name,
+        location: post.location ? {
+          latitude: post.location.latitude,
+          longitude: post.location.longitude
+        } : null,
+        location_name: post.locationName || null,
+        contact_phone: post.contactPhone.trim(),
+        contact_name: post.contactName.trim() || user?.name,
+        user_id: user?.id,
       };
 
-      // TODO: Envoyer au serveur
-      // await api.post('/community/posts', postData);
+      console.log('📦 Post data:', postData);
+
+      // Send to server
+      const response = await api.post('/community/posts', postData);
+      
+      console.log('✅ Post created:', response.data);
 
       Alert.alert(
         'Post publié !',
@@ -205,14 +208,19 @@ export default function CreatePostScreen({ navigation }) {
             text: 'OK',
             onPress: () => {
               navigation.goBack();
-              // TODO: Refresh du feed communautaire
             }
           }
         ]
       );
     } catch (error) {
-      console.error('Erreur lors de la publication:', error);
-      Alert.alert('Erreur', 'Impossible de publier le post. Veuillez réessayer.');
+      console.error('❌ Error publishing post:', error);
+      console.error('Error details:', error.response?.data);
+      
+      const errorMessage = error.response?.data?.message || 
+                          error.message || 
+                          'Impossible de publier le post. Veuillez réessayer.';
+      
+      Alert.alert('Erreur', errorMessage);
     } finally {
       setLoading(false);
     }

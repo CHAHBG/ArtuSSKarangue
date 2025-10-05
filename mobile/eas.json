@@ -22,7 +22,7 @@
     "preview": {
       "distribution": "internal",
       "env": {
-        "NODE_ENV": "development"
+        "NODE_ENV": "production"
       },
       "android": {
         "buildType": "apk"
@@ -30,7 +30,8 @@
       "ios": {
         "simulator": false,
         "buildConfiguration": "Release"
-      }
+      },
+      "channel": "preview"
     },
     "production": {
       "env": {

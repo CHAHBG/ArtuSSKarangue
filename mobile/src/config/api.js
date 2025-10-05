@@ -1,19 +1,45 @@
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+// Validate axios immediately
+if (!axios) {
+  console.error('❌ CRITICAL: axios module is undefined');
+  throw new Error('axios module failed to load - check if axios is installed');
+}
+
+if (typeof axios.create !== 'function') {
+  console.error('❌ CRITICAL: axios.create is not a function');
+  throw new Error('axios module is invalid - reinstall axios');
+}
+
+// Log successful imports
+console.log('✅ axios loaded, version:', axios.VERSION || 'unknown');
+console.log('✅ AsyncStorage loaded');
+
 // API Configuration
 const API_URL = __DEV__ 
   ? 'http://localhost:5000/api/v1'  // Development
-  : 'https://your-production-url.com/api/v1';  // Production
+  : 'https://artusskarangue-production.up.railway.app/api/v1';  // Production - Railway
+
+// Log API URL for debugging
+console.log('🌐 API URL:', API_URL);
+console.log('🔧 __DEV__:', __DEV__);
 
 // Create axios instance
 const api = axios.create({
   baseURL: API_URL,
-  timeout: 10000,
+  timeout: 5000, // Reduced from 10s to 5s for faster failure
   headers: {
     'Content-Type': 'application/json',
   },
+  // Don't throw on network errors, let interceptors handle
+  validateStatus: function (status) {
+    return status < 500; // Accept all status codes < 500
+  },
 });
+
+console.log('✅ API instance created successfully');
+console.log('✅ API.post is', typeof api.post);
 
 // Request interceptor - Add auth token
 api.interceptors.request.use(
@@ -37,6 +63,13 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
+    // Log network errors but don't crash
+    if (error.code === 'ECONNABORTED') {
+      console.warn('⚠️ Request timeout - API may be slow or unreachable');
+    } else if (error.message === 'Network Error') {
+      console.warn('⚠️ Network error - Check internet connection');
+    }
+    
     const originalRequest = error.config;
 
     // If 401 and not already retried, try to refresh token

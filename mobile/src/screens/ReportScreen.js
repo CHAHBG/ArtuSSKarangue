@@ -50,25 +50,36 @@ export default function ReportScreen({ navigation, route }) {
   const [audioUri, setAudioUri] = useState(null);
   const [recordingDuration, setRecordingDuration] = useState(0);
   const recordingAnimation = useRef(new Animated.Value(0)).current;
+  const recordingTimerRef = useRef(null);
+  const recordingTimeoutRef = useRef(null);
   const isSOSMode = route.params?.sos;
 
   // ===== FONCTIONS AUDIO =====
   const startRecording = async () => {
     try {
+      console.log('🎤 Starting audio recording...');
+      
+      // Request permissions
       const { status } = await Audio.requestPermissionsAsync();
       if (status !== 'granted') {
         Alert.alert('Permission requise', 'L\'accès au microphone est nécessaire pour enregistrer');
         return;
       }
+      console.log('✅ Audio permission granted');
 
+      // Set audio mode
       await Audio.setAudioModeAsync({
         allowsRecordingIOS: true,
         playsInSilentModeIOS: true,
+        staysActiveInBackground: false,
       });
+      console.log('✅ Audio mode configured');
 
+      // Create and start recording
       const recording = new Audio.Recording();
-      await recording.prepareToRecordAsync(Audio.RECORDING_OPTIONS_PRESET_HIGH_QUALITY);
+      await recording.prepareToRecordAsync(Audio.RecordingOptionsPresets.HIGH_QUALITY);
       await recording.startAsync();
+      console.log('✅ Recording started');
 
       setAudioRecording(recording);
       setRecordingStatus('recording');
@@ -90,16 +101,14 @@ export default function ReportScreen({ navigation, route }) {
         ])
       ).start();
 
-      // Timer pour la durée
-      const timer = setInterval(() => {
+      // Timer pour la durée - Store in ref to clear it later
+      recordingTimerRef.current = setInterval(() => {
         setRecordingDuration(prev => prev + 1);
       }, 1000);
 
-      setTimeout(() => {
-        clearInterval(timer);
-        if (recordingStatus === 'recording') {
-          stopRecording();
-        }
+      // Auto-stop after 5 minutes
+      recordingTimeoutRef.current = setTimeout(() => {
+        stopRecording();
       }, 300000); // 5 minutes max
 
     } catch (error) {
@@ -110,17 +119,43 @@ export default function ReportScreen({ navigation, route }) {
 
   const stopRecording = async () => {
     try {
-      if (!audioRecording) return;
+      console.log('🛑 Stopping audio recording...');
+      
+      if (!audioRecording) {
+        console.log('❌ No recording to stop');
+        return;
+      }
+
+      // Clear timers
+      if (recordingTimerRef.current) {
+        clearInterval(recordingTimerRef.current);
+        recordingTimerRef.current = null;
+      }
+      if (recordingTimeoutRef.current) {
+        clearTimeout(recordingTimeoutRef.current);
+        recordingTimeoutRef.current = null;
+      }
 
       setRecordingStatus('stopped');
-      await audioRecording.stopAndUnloadAsync();
       
+      // Stop and get URI
+      await audioRecording.stopAndUnloadAsync();
       const uri = audioRecording.getURI();
+      
+      console.log('✅ Recording stopped, URI:', uri);
+      
       setAudioUri(uri);
       setAudioRecording(null);
       
+      // Stop animation
       recordingAnimation.stopAnimation();
       recordingAnimation.setValue(0);
+
+      // Reset audio mode
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: false,
+        playsInSilentModeIOS: true,
+      });
 
       Toast.show({
         type: 'success',
@@ -128,7 +163,12 @@ export default function ReportScreen({ navigation, route }) {
         text2: `Durée: ${Math.floor(recordingDuration / 60)}:${(recordingDuration % 60).toString().padStart(2, '0')}`,
       });
     } catch (error) {
-      console.error('Erreur lors de l\'arrêt de l\'enregistrement:', error);
+      console.error('❌ Erreur lors de l\'arrêt de l\'enregistrement:', error);
+      Alert.alert('Erreur', 'Impossible d\'arrêter l\'enregistrement: ' + error.message);
+      
+      // Reset state even on error
+      setRecordingStatus('idle');
+      setAudioRecording(null);
     }
   };
 
@@ -253,24 +293,48 @@ export default function ReportScreen({ navigation, route }) {
     try {
       setSubmitting(true);
 
+      console.log('📤 Submitting emergency report...');
+      console.log('📍 Location:', location);
+      console.log('🎤 Audio URI:', audioUri);
+      console.log('🖼️ Images:', selectedImages.length);
+
+      // Prepare data matching backend schema
       const reportData = {
-        type: values.type,
+        type: values.type, // Backend uses 'type', not 'emergency_type'
         description: values.description,
+        latitude: location.latitude,
+        longitude: location.longitude,
+        address: location.address || `${location.latitude.toFixed(4)}, ${location.longitude.toFixed(4)}`,
+        severity: isSOSMode ? 'critical' : 'medium',
+        is_anonymous: false,
+        // Add location as JSONB for compatibility
         location: {
-          latitude: location.latitude,
-          longitude: location.longitude,
+          type: 'Point',
+          coordinates: [location.longitude, location.latitude],
         },
-        images: selectedImages.map(img => img.uri),
-        audioUri: audioUri,
-        audioDuration: recordingDuration,
-        isSOSMode,
-        timestamp: new Date().toISOString(),
       };
 
-      // TODO: Remplacer par l'appel API réel
-      // await api.post('/emergencies', reportData);
+      // Add audio URL if available (TODO: Upload to server first)
+      if (audioUri) {
+        console.log('🎤 Audio will be uploaded (not implemented yet)');
+        // reportData.audio_url = audioUri; // Will need server upload
+      }
+
+      // Add images if available (TODO: Upload to server first)
+      if (selectedImages.length > 0) {
+        console.log('🖼️ Images will be uploaded (not implemented yet)');
+        // reportData.media_urls = selectedImages.map(img => img.uri); // Will need server upload
+      }
+
+      console.log('📦 Report data:', JSON.stringify(reportData, null, 2));
+
+      // Call API to create emergency
+      const response = await api.post('/emergencies', reportData);
+      const emergencyId = response.data.data.emergency.id;
       
-      console.log('Report data:', reportData);
+      console.log('✅ Emergency created:', emergencyId);
+      
+      console.log('Emergency created:', emergencyId);
 
       Toast.show({
         type: 'success',
@@ -290,16 +354,20 @@ export default function ReportScreen({ navigation, route }) {
         setSound(null);
       }
 
+      // Navigate to Success screen
       setTimeout(() => {
-        navigation.goBack();
-      }, 1500);
+        navigation.navigate('Success', { 
+          emergencyType: values.type,
+          emergencyId: emergencyId 
+        });
+      }, 500);
 
     } catch (error) {
       console.error('Erreur lors de l\'envoi:', error);
       Toast.show({
         type: 'error',
         text1: 'Erreur',
-        text2: 'Impossible d\'envoyer le signalement',
+        text2: error.response?.data?.message || 'Impossible d\'envoyer le signalement',
       });
     } finally {
       setSubmitting(false);

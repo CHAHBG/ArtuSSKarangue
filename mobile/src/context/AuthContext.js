@@ -1,8 +1,17 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { supabase, supabaseAuth } from '../config/supabase';
+import api from '../config/api';
 import { initializeSocket, disconnectSocket } from '../config/socket';
 import Toast from 'react-native-toast-message';
+
+// Validate API import
+if (!api) {
+  console.error('❌ CRITICAL: api is undefined in AuthContext');
+  throw new Error('API module not loaded correctly');
+}
+
+console.log('✅ AuthContext: api imported', typeof api);
+console.log('✅ AuthContext: api.post available', typeof api?.post);
 
 const AuthContext = createContext({});
 
@@ -14,65 +23,54 @@ export const AuthProvider = ({ children }) => {
   // Load user from storage on mount
   useEffect(() => {
     loadUser();
-    
-    // Écouter les changements d'authentification Supabase
-    const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === 'SIGNED_IN' && session) {
-        const profile = await supabaseAuth.getUserProfile(session.user.id);
-        setUser(profile);
-        setIsAuthenticated(true);
-      } else if (event === 'SIGNED_OUT') {
-        setUser(null);
-        setIsAuthenticated(false);
-      }
-    });
-
-    return () => {
-      authListener?.subscription?.unsubscribe();
-    };
   }, []);
 
   const loadUser = async () => {
     try {
-      const session = await supabaseAuth.getSession();
-      
-      if (session?.user) {
-        const profile = await supabaseAuth.getUserProfile(session.user.id);
-        setUser(profile);
+      console.log('📱 Loading user from storage...');
+      const [storedUser, token] = await AsyncStorage.multiGet([
+        'user',
+        'accessToken',
+      ]);
+
+      if (storedUser[1] && token[1]) {
+        console.log('✅ User found in storage');
+        setUser(JSON.parse(storedUser[1]));
         setIsAuthenticated(true);
-        initializeSocket(session.access_token);
+        
+        // Initialize socket but don't block if fails
+        try {
+          initializeSocket(token[1]);
+        } catch (socketError) {
+          console.warn('⚠️ Socket initialization failed (non-critical):', socketError.message);
+        }
+      } else {
+        console.log('ℹ️ No stored user found');
       }
     } catch (error) {
-      console.error('Error loading user:', error);
+      console.error('❌ Error loading user:', error);
+      // Don't crash, just log and continue
     } finally {
+      console.log('✅ Auth loading complete');
       setLoading(false);
     }
   };
 
   const register = async (userData) => {
     try {
-      const data = await supabaseAuth.signUp(
-        userData.email,
-        userData.password,
-        {
-          nom: userData.nom,
-          prenom: userData.prenom,
-          telephone: userData.telephone,
-          role: userData.role || 'citizen',
-          username: userData.username || `${userData.nom}${userData.prenom}`.toLowerCase(),
-          full_name: `${userData.nom} ${userData.prenom}`,
-        }
-      );
+      console.log('📝 Registering user...');
+      const response = await api.post('/auth/register', userData);
+      const { user: newUser, accessToken, refreshToken } = response.data.data;
 
-      // Récupérer le profil complet
-      const profile = await supabaseAuth.getUserProfile(data.user.id);
-      
-      setUser(profile);
+      await AsyncStorage.multiSet([
+        ['user', JSON.stringify(newUser)],
+        ['accessToken', accessToken],
+        ['refreshToken', refreshToken],
+      ]);
+
+      setUser(newUser);
       setIsAuthenticated(true);
-      
-      if (data.session?.access_token) {
-        initializeSocket(data.session.access_token);
-      }
+      initializeSocket(accessToken);
 
       Toast.show({
         type: 'success',
@@ -80,9 +78,9 @@ export const AuthProvider = ({ children }) => {
         text2: 'Compte créé avec succès',
       });
 
-      return { success: true, user: profile };
+      return { success: true, user: newUser };
     } catch (error) {
-      const message = error.message || 'Erreur lors de l\'inscription';
+      const message = error.response?.data?.message || 'Erreur lors de l\'inscription';
       Toast.show({
         type: 'error',
         text1: 'Erreur',
@@ -94,27 +92,28 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (email, password) => {
     try {
-      const data = await supabaseAuth.signIn(email, password);
-      
-      // Récupérer le profil complet
-      const profile = await supabaseAuth.getUserProfile(data.user.id);
+      const response = await api.post('/auth/login', { email, password });
+      const { user: loggedUser, accessToken, refreshToken } = response.data.data;
 
-      setUser(profile);
+      await AsyncStorage.multiSet([
+        ['user', JSON.stringify(loggedUser)],
+        ['accessToken', accessToken],
+        ['refreshToken', refreshToken],
+      ]);
+
+      setUser(loggedUser);
       setIsAuthenticated(true);
-      
-      if (data.session?.access_token) {
-        initializeSocket(data.session.access_token);
-      }
+      initializeSocket(accessToken);
 
       Toast.show({
         type: 'success',
         text1: 'Bienvenue!',
-        text2: `Content de vous revoir ${profile.full_name || profile.nom}`,
+        text2: `Content de vous revoir ${loggedUser.full_name}`,
       });
 
-      return { success: true, user: profile };
+      return { success: true, user: loggedUser };
     } catch (error) {
-      const message = error.message || 'Email ou mot de passe incorrect';
+      const message = error.response?.data?.message || 'Email ou mot de passe incorrect';
       Toast.show({
         type: 'error',
         text1: 'Erreur',
@@ -126,10 +125,11 @@ export const AuthProvider = ({ children }) => {
 
   const logout = async () => {
     try {
-      await supabaseAuth.signOut();
+      await api.post('/auth/logout');
     } catch (error) {
       console.error('Logout error:', error);
     } finally {
+      await AsyncStorage.multiRemove(['user', 'accessToken', 'refreshToken']);
       setUser(null);
       setIsAuthenticated(false);
       disconnectSocket();
@@ -144,8 +144,10 @@ export const AuthProvider = ({ children }) => {
 
   const updateProfile = async (updates) => {
     try {
-      const updatedUser = await supabaseAuth.updateProfile(user.id, updates);
+      const response = await api.patch('/auth/update-profile', updates);
+      const updatedUser = response.data.data.user;
 
+      await AsyncStorage.setItem('user', JSON.stringify(updatedUser));
       setUser(updatedUser);
 
       Toast.show({
@@ -156,7 +158,7 @@ export const AuthProvider = ({ children }) => {
 
       return { success: true, user: updatedUser };
     } catch (error) {
-      const message = error.message || 'Erreur lors de la mise à jour';
+      const message = error.response?.data?.message || 'Erreur lors de la mise à jour';
       Toast.show({
         type: 'error',
         text1: 'Erreur',
@@ -168,7 +170,7 @@ export const AuthProvider = ({ children }) => {
 
   const updateLocation = async (latitude, longitude) => {
     try {
-      await supabaseAuth.updateLocation(user.id, latitude, longitude);
+      await api.patch('/auth/update-location', { latitude, longitude });
       return { success: true };
     } catch (error) {
       console.error('Error updating location:', error);

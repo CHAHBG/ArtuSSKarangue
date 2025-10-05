@@ -2,31 +2,40 @@ import { io } from 'socket.io-client';
 
 const SOCKET_URL = __DEV__ 
   ? 'http://localhost:5000'
-  : 'https://your-production-url.com';
+  : 'https://artusskarangue-production.up.railway.app';
+
+console.log('🔌 Socket URL:', SOCKET_URL);
 
 let socket = null;
 
 export const initializeSocket = (token) => {
-  if (!socket) {
-    socket = io(SOCKET_URL, {
-      auth: { token },
-      transports: ['websocket'],
-      reconnection: true,
-      reconnectionDelay: 1000,
-      reconnectionAttempts: 5,
-    });
+  try {
+    if (!socket) {
+      console.log('🔌 Initializing socket with token:', token ? 'present' : 'missing');
+      
+      socket = io(SOCKET_URL, {
+        auth: { token },
+        transports: ['websocket'],
+        reconnection: true,
+        reconnectionDelay: 1000,
+        reconnectionAttempts: 5,
+      });
 
-    socket.on('connect', () => {
-      console.log('✅ Socket connected:', socket.id);
-    });
+      socket.on('connect', () => {
+        console.log('✅ Socket connected:', socket.id);
+      });
 
-    socket.on('disconnect', (reason) => {
-      console.log('❌ Socket disconnected:', reason);
-    });
+      socket.on('disconnect', (reason) => {
+        console.log('❌ Socket disconnected:', reason);
+      });
 
-    socket.on('connect_error', (error) => {
-      console.error('Socket connection error:', error);
-    });
+      socket.on('connect_error', (error) => {
+        console.error('Socket connection error:', error);
+      });
+    }
+  } catch (error) {
+    console.error('❌ Error initializing socket:', error);
+    // Don't throw - socket is optional
   }
 
   return socket;

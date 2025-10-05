@@ -7,6 +7,8 @@ import { AuthProvider, useAuth } from './src/context/AuthContext';
 import { LocationProvider } from './src/context/LocationContext';
 import { colors } from './src/theme';
 import Toast from 'react-native-toast-message';
+import ErrorBoundary from './src/components/ErrorBoundary';
+import { ActivityIndicator, StyleSheet } from 'react-native';
 
 // Splash Screen
 import SplashScreen from './src/screens/SplashScreen';
@@ -26,6 +28,9 @@ import CommunityScreen from './src/screens/CommunityScreen';
 import NotificationsScreen from './src/screens/NotificationsScreen';
 import SOSSettingsScreen from './src/screens/SOSSettingsScreen';
 import CreatePostScreen from './src/screens/CreatePostScreen';
+import EmergencyDetailsScreen from './src/screens/EmergencyDetailsScreen';
+import ViewEmergenciesScreen from './src/screens/ViewEmergenciesScreen';
+import SuccessScreen from './src/screens/SuccessScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -116,6 +121,9 @@ function AppNavigator() {
             <Stack.Screen name="Notifications" component={NotificationsScreen} />
             <Stack.Screen name="SOSSettings" component={SOSSettingsScreen} />
             <Stack.Screen name="CreatePost" component={CreatePostScreen} />
+            <Stack.Screen name="EmergencyDetails" component={EmergencyDetailsScreen} />
+            <Stack.Screen name="ViewEmergencies" component={ViewEmergenciesScreen} />
+            <Stack.Screen name="Success" component={SuccessScreen} />
           </>
         ) : (
           <>
@@ -130,11 +138,13 @@ function AppNavigator() {
 
 export default function App() {
   return (
-    <AuthProvider>
-      <LocationProvider>
-        <AppNavigator />
-        <Toast />
-      </LocationProvider>
-    </AuthProvider>
+    <ErrorBoundary>
+      <AuthProvider>
+        <LocationProvider>
+          <AppNavigator />
+          <Toast />
+        </LocationProvider>
+      </AuthProvider>
+    </ErrorBoundary>
   );
 }
